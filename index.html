@@ -1,0 +1,2111 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thời kỳ quá độ như một cây cầu lịch sử</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --paper: #e9e9e9;
+      --ink: #161616;
+      --white: #ffffff;
+      --accent: #f5c518;
+      --context-fill: #dcebf1;
+      --context-shadow: #75a9bf;
+      --context-line: #4f8fa8;
+      --action-fill: #def0d4;
+      --action-shadow: #78bd71;
+      --action-line: #55a75f;
+      --future-fill: #fff0a8;
+      --future-shadow: #ff7a59;
+      --future-line: #ed6748;
+      --center-fill: #f2a51f;
+      --center-shadow: #bf6f17;
+      --correct: #20a35a;
+      --wrong: #d94343;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Be Vietnam Pro", system-ui, sans-serif;
+    }
+
+    body {
+      overflow: hidden;
+    }
+
+    .scroll-shell {
+      width: 100vw;
+      height: 100vh;
+      overflow: auto;
+      background: var(--paper);
+    }
+
+    .tab-bar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 14px 16px 8px;
+      background: linear-gradient(rgba(233, 233, 233, 0.96), rgba(233, 233, 233, 0.76));
+      backdrop-filter: blur(6px);
+    }
+
+    .tab-btn {
+      min-height: 40px;
+      padding: 8px 18px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.9);
+      box-shadow: 3px 3px 0 var(--ink);
+      color: var(--ink);
+      cursor: pointer;
+      font: inherit;
+      font-size: 15px;
+      line-height: 1.15;
+      font-weight: 700;
+      transition: transform 150ms ease, background 150ms ease, box-shadow 150ms ease;
+    }
+
+    .tab-btn:hover,
+    .tab-btn:focus-visible {
+      transform: translate(-1px, -1px);
+      background: #fff6ca;
+      box-shadow: 5px 5px 0 var(--ink);
+    }
+
+    .tab-btn.is-active {
+      background: var(--center-fill);
+      box-shadow: 5px 5px 0 var(--center-shadow);
+    }
+
+    .tab-panel[hidden] {
+      display: none;
+    }
+
+    .stage {
+      min-width: 1600px;
+      min-height: 950px;
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .canvas {
+      position: relative;
+      width: 1600px;
+      height: 950px;
+      flex: 0 0 auto;
+      background:
+        radial-gradient(circle at 28% 30%, rgba(79, 143, 168, 0.14) 0 2px, transparent 3px),
+        radial-gradient(circle at 55% 74%, rgba(85, 167, 95, 0.13) 0 2px, transparent 3px),
+        radial-gradient(circle at 76% 44%, rgba(237, 103, 72, 0.12) 0 2px, transparent 3px),
+        var(--paper);
+      overflow: visible;
+    }
+
+    .arrow-layer {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+      overflow: visible;
+    }
+
+    .connector-piece {
+      fill: none;
+      stroke: var(--line-color);
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: url(#lineSketch);
+      animation: drawLine 1.1s ease both;
+    }
+
+    .connector-piece.root {
+      stroke-width: 8;
+    }
+
+    .connector-piece.mid {
+      stroke-width: 5;
+    }
+
+    .connector-piece.tip {
+      stroke-width: 2.7;
+    }
+
+    .connector.context {
+      --line-color: var(--context-line);
+    }
+
+    .connector.action {
+      --line-color: var(--action-line);
+    }
+
+    .connector.future {
+      --line-color: var(--future-line);
+    }
+
+    .node {
+      position: absolute;
+      z-index: 2;
+      width: 318px;
+      min-height: 166px;
+      padding: 20px 24px 22px;
+      transform: translate(-50%, -50%) rotate(var(--tilt, 0deg));
+      border: 0;
+      border-radius: 18px 22px 16px 24px;
+      background: transparent;
+      color: var(--ink);
+      text-align: left;
+      font: inherit;
+      box-shadow: 5px 5px 0 var(--node-shadow, var(--accent));
+      cursor: pointer;
+      animation: popIn 650ms ease both, floatNode 5.5s ease-in-out infinite;
+      animation-delay: var(--delay, 0ms), calc(var(--delay, 0ms) + 900ms);
+    }
+
+    .node::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background: var(--node-fill, var(--white));
+      border: 2.5px solid var(--ink);
+      border-radius: inherit;
+      filter: url(#sketch);
+      transition: transform 180ms ease, background 180ms ease;
+    }
+
+    .node::after {
+      content: "Bấm để làm quiz";
+      position: absolute;
+      right: 16px;
+      top: -16px;
+      z-index: 2;
+      padding: 4px 10px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.86);
+      box-shadow: 2px 2px 0 var(--ink);
+      font-size: 12px;
+      line-height: 1;
+      font-weight: 700;
+      transform: rotate(-1deg);
+    }
+
+    .node:hover::before,
+    .node:focus-visible::before {
+      transform: translate(-3px, -3px);
+    }
+
+    .node:hover {
+      box-shadow: 9px 9px 0 var(--node-shadow, var(--accent));
+    }
+
+    .node:focus-visible {
+      outline: 4px solid var(--accent);
+      outline-offset: 7px;
+    }
+
+    .node-content {
+      position: relative;
+      z-index: 1;
+      padding-bottom: 22px;
+    }
+
+    .node h2 {
+      margin: 0 0 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 22px;
+      line-height: 1.04;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .title-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 34px;
+      height: 34px;
+      flex: 0 0 34px;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 2px 2px 0 var(--ink);
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .node ul {
+      margin: 4px 0 0;
+      padding-left: 24px;
+    }
+
+    .node li {
+      margin: 7px 0;
+      font-size: 18px;
+      line-height: 1.35;
+      font-weight: 600;
+    }
+
+    .main-node {
+      width: 372px;
+      min-height: 176px;
+      padding: 22px 26px 20px;
+      text-align: center;
+      border-radius: 24px 18px 26px 20px;
+      box-shadow: 9px 9px 0 var(--center-shadow);
+      cursor: default;
+      --node-fill: var(--center-fill);
+      --node-shadow: var(--center-shadow);
+    }
+
+    .main-node::after {
+      content: "Chọn một node xung quanh";
+      right: 50%;
+      top: auto;
+      bottom: -16px;
+      transform: translateX(50%) rotate(-1deg);
+    }
+
+    .main-title {
+      font-size: 25px;
+      line-height: 1.04;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .bridge-visual {
+      width: 220px;
+      height: 54px;
+      margin: 7px auto 4px;
+    }
+
+    .bridge-visual svg {
+      display: block;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .main-subtitle {
+      margin-top: 2px;
+      font-size: 22px;
+      line-height: 1.04;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .left-node {
+      width: 320px;
+      min-height: 202px;
+    }
+
+    .right-node {
+      width: 370px;
+      min-height: 246px;
+    }
+
+    .top-node {
+      width: 380px;
+      min-height: 228px;
+    }
+
+    .condition-node {
+      width: 380px;
+      min-height: 198px;
+    }
+
+    .bridge-node {
+      width: 590px;
+      min-height: 230px;
+      padding-bottom: 24px;
+    }
+
+    .group-context {
+      --node-fill: var(--context-fill);
+      --node-shadow: var(--context-shadow);
+    }
+
+    .group-action {
+      --node-fill: var(--action-fill);
+      --node-shadow: var(--action-shadow);
+    }
+
+    .group-future {
+      --node-fill: var(--future-fill);
+      --node-shadow: var(--future-shadow);
+    }
+
+    .year-row {
+      margin-top: 13px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-size: 19px;
+      font-weight: 700;
+    }
+
+    .year-pill,
+    .bridge-step {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--ink);
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+
+    .year-pill {
+      min-width: 70px;
+      padding: 4px 13px 5px;
+      border-radius: 999px;
+      line-height: 1;
+      background: #ff7a59;
+      color: var(--white);
+    }
+
+    .bridge-steps {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px 12px;
+      margin: 13px auto 0;
+      width: 540px;
+    }
+
+    .bridge-step {
+      position: relative;
+      min-height: 52px;
+      padding: 7px 10px 8px;
+      background: #ffe08a;
+      border-radius: 14px 18px 14px 18px;
+      font-size: 15px;
+      line-height: 1.02;
+      font-weight: 600;
+      text-align: center;
+    }
+
+    .bridge-step::after {
+      content: "";
+      position: absolute;
+      right: -14px;
+      top: 50%;
+      width: 18px;
+      height: 5px;
+      transform: translateY(-50%) rotate(8deg);
+      background: var(--ink);
+      border-radius: 999px;
+    }
+
+    .bridge-step:nth-child(3)::after,
+    .bridge-step:nth-child(6)::after {
+      display: none;
+    }
+
+    .lightbulb {
+      position: absolute;
+      left: 750px;
+      top: 28px;
+      width: 92px;
+      height: 92px;
+      transform: translateX(-50%) rotate(-3deg);
+      z-index: 3;
+      animation: glow 2.4s ease-in-out infinite;
+    }
+
+    .star {
+      position: absolute;
+      z-index: 3;
+      color: var(--ink);
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 700;
+      animation: twinkle 2.4s ease-in-out infinite;
+    }
+
+    .star.one { left: 48px; top: 48px; }
+    .star.two { right: 58px; top: 82px; animation-delay: 450ms; }
+    .star.three { left: 34px; bottom: 52px; animation-delay: 900ms; }
+
+    .exclaim {
+      position: absolute;
+      left: 750px;
+      bottom: 48px;
+      z-index: 3;
+      width: 56px;
+      height: 56px;
+      transform: translateX(-50%) rotate(5deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2.5px solid var(--ink);
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 4px 4px 0 var(--ink);
+      font-size: 38px;
+      line-height: 1;
+      font-weight: 800;
+    }
+
+    .footer-note {
+      position: absolute;
+      left: 50%;
+      bottom: 14px;
+      z-index: 3;
+      transform: translateX(-50%) rotate(-1deg);
+      font-size: 19px;
+      font-style: italic;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .visual-stage {
+      min-width: 1600px;
+      min-height: 900px;
+      padding: 16px 24px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .visual-canvas {
+      position: relative;
+      width: 1600px;
+      height: 900px;
+      padding: 30px 56px;
+      flex: 0 0 auto;
+      background:
+        radial-gradient(circle at 18% 24%, rgba(79, 143, 168, 0.16) 0 2px, transparent 3px),
+        radial-gradient(circle at 72% 38%, rgba(237, 103, 72, 0.14) 0 2px, transparent 3px),
+        radial-gradient(circle at 50% 78%, rgba(85, 167, 95, 0.14) 0 2px, transparent 3px),
+        var(--paper);
+      overflow: hidden;
+    }
+
+    .visual-title {
+      margin: 0;
+      text-align: center;
+      font-size: 34px;
+      line-height: 1.12;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .visual-lead {
+      max-width: 850px;
+      margin: 12px auto 0;
+      text-align: center;
+      font-size: 18px;
+      line-height: 1.45;
+      font-weight: 500;
+    }
+
+    .visual-grid {
+      display: grid;
+      grid-template-columns: 370px 1fr;
+      gap: 28px;
+      margin-top: 22px;
+      align-items: stretch;
+    }
+
+    .visual-card {
+      position: relative;
+      border: 2.5px solid var(--ink);
+      border-radius: 20px 16px 22px 16px;
+      background: rgba(255, 255, 255, 0.76);
+      box-shadow: 6px 6px 0 var(--accent);
+      filter: url(#sketch);
+    }
+
+    .shortcut-card {
+      padding: 22px;
+      min-height: 400px;
+    }
+
+    .shortcut-card h2,
+    .bridge-card h2,
+    .reason-card h3 {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+
+    .jump-diagram {
+      position: relative;
+      height: 190px;
+      margin: 16px 0 14px;
+      border: 2px dashed rgba(22, 22, 22, 0.5);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.54);
+      overflow: hidden;
+    }
+
+    .jump-node {
+      position: absolute;
+      top: 122px;
+      width: 124px;
+      padding: 9px 10px;
+      border: 2px solid var(--ink);
+      border-radius: 14px;
+      background: var(--white);
+      box-shadow: 3px 3px 0 var(--ink);
+      text-align: center;
+      font-size: 14px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+
+    .jump-node.old { left: 18px; background: var(--context-fill); }
+    .jump-node.goal { right: 18px; background: var(--future-fill); }
+
+    .jump-arrow {
+      position: absolute;
+      left: 120px;
+      top: 18px;
+      width: 155px;
+      height: 105px;
+    }
+
+    .block-sign {
+      position: absolute;
+      left: 50%;
+      top: 56px;
+      width: 70px;
+      height: 70px;
+      transform: translateX(-50%) rotate(-8deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 5px solid var(--wrong);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.92);
+      color: var(--wrong);
+      font-size: 44px;
+      line-height: 1;
+      font-weight: 800;
+    }
+
+    .shortcut-list {
+      margin: 0;
+      padding-left: 22px;
+    }
+
+    .shortcut-list li {
+      margin: 9px 0;
+      font-size: 16px;
+      line-height: 1.35;
+      font-weight: 500;
+    }
+
+    .bridge-card {
+      padding: 22px 24px;
+      min-height: 400px;
+      box-shadow: 6px 6px 0 var(--action-shadow);
+    }
+
+    .bridge-flow {
+      display: grid;
+      grid-template-columns: 140px 1fr 140px;
+      gap: 16px;
+      align-items: center;
+      margin-top: 22px;
+    }
+
+    .end-state {
+      min-height: 190px;
+      padding: 15px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--ink);
+      border-radius: 18px;
+      box-shadow: 4px 4px 0 var(--ink);
+      text-align: center;
+      font-size: 17px;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    .end-state.old { background: var(--context-fill); }
+    .end-state.goal { background: var(--future-fill); }
+
+    .span-track {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      align-items: end;
+      min-height: 230px;
+      padding: 14px 4px 8px;
+    }
+
+    .span-track::before {
+      content: "";
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 55px;
+      height: 8px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: var(--accent);
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+
+    .span-step {
+      position: relative;
+      min-height: 106px;
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 2px solid var(--ink);
+      border-radius: 16px 12px 16px 12px;
+      background: #ffe08a;
+      box-shadow: 3px 3px 0 var(--ink);
+      text-align: center;
+      font-size: 13px;
+      line-height: 1.2;
+      font-weight: 600;
+      animation: stepPulse 3.4s ease-in-out infinite;
+      animation-delay: calc(var(--i) * 140ms);
+    }
+
+    .span-step::after {
+      content: "";
+      position: absolute;
+      bottom: -35px;
+      width: 4px;
+      height: 34px;
+      border-radius: 999px;
+      background: var(--ink);
+    }
+
+    .span-number {
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: var(--white);
+      font-weight: 700;
+    }
+
+    .bridge-note {
+      margin: 18px 0 0;
+      padding: 12px 14px;
+      border: 2px solid var(--ink);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.72);
+      font-size: 16px;
+      line-height: 1.42;
+      font-weight: 500;
+    }
+
+    .reason-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-top: 18px;
+    }
+
+    .reason-card {
+      min-height: 132px;
+      padding: 16px;
+      border: 2px solid var(--ink);
+      border-radius: 18px 14px 18px 14px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 4px 4px 0 var(--context-shadow);
+    }
+
+    .reason-card:nth-child(even) {
+      box-shadow: 4px 4px 0 var(--action-shadow);
+    }
+
+    .reason-icon {
+      width: 38px;
+      height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 2px 2px 0 var(--ink);
+      font-size: 20px;
+    }
+
+    .reason-card p {
+      margin: 7px 0 0;
+      font-size: 14px;
+      line-height: 1.38;
+      font-weight: 500;
+    }
+
+    .formula-strip {
+      margin: 16px auto 0;
+      max-width: 970px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      border: 2.5px solid var(--ink);
+      border-radius: 999px;
+      background: var(--white);
+      box-shadow: 5px 5px 0 var(--center-shadow);
+      font-size: 18px;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    .ai-stage {
+      min-width: 1600px;
+      min-height: 900px;
+      padding: 16px 24px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ai-canvas {
+      position: relative;
+      width: 1600px;
+      height: 900px;
+      padding: 34px 62px;
+      flex: 0 0 auto;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(245, 197, 24, 0.16) 0 2px, transparent 3px),
+        radial-gradient(circle at 82% 32%, rgba(79, 143, 168, 0.14) 0 2px, transparent 3px),
+        radial-gradient(circle at 50% 78%, rgba(85, 167, 95, 0.13) 0 2px, transparent 3px),
+        var(--paper);
+      overflow: hidden;
+    }
+
+    .ai-title {
+      margin: 0;
+      text-align: center;
+      font-size: 36px;
+      line-height: 1.12;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .ai-lead {
+      max-width: 920px;
+      margin: 12px auto 0;
+      text-align: center;
+      font-size: 18px;
+      line-height: 1.45;
+      font-weight: 500;
+    }
+
+    .ai-layout {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 24px;
+      margin-top: 28px;
+      align-items: stretch;
+    }
+
+    .pledge-panel,
+    .ai-principles,
+    .ai-final {
+      border: 2.5px solid var(--ink);
+      border-radius: 22px 16px 24px 16px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 6px 6px 0 var(--accent);
+      filter: url(#sketch);
+    }
+
+    .pledge-panel {
+      padding: 24px;
+      min-height: 448px;
+    }
+
+    .pledge-panel h2,
+    .ai-principles h2 {
+      margin: 0 0 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 24px;
+      line-height: 1.2;
+      font-weight: 700;
+    }
+
+    .ai-badge {
+      width: 42px;
+      height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: var(--center-fill);
+      box-shadow: 2px 2px 0 var(--ink);
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .pledge-text {
+      margin: 0;
+      padding: 18px 20px;
+      border: 2px dashed rgba(22, 22, 22, 0.58);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.66);
+      font-size: 20px;
+      line-height: 1.55;
+      font-weight: 500;
+    }
+
+    .pledge-flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .pledge-step {
+      min-height: 92px;
+      padding: 12px 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 2px solid var(--ink);
+      border-radius: 16px;
+      background: var(--context-fill);
+      box-shadow: 3px 3px 0 var(--ink);
+      text-align: center;
+      font-size: 14px;
+      line-height: 1.25;
+      font-weight: 600;
+    }
+
+    .pledge-step:nth-child(2) { background: #ffe08a; }
+    .pledge-step:nth-child(3) { background: var(--action-fill); }
+    .pledge-step:nth-child(4) { background: var(--future-fill); }
+
+    .pledge-icon {
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: var(--white);
+      font-weight: 700;
+    }
+
+    .ai-principles {
+      padding: 24px;
+      min-height: 448px;
+      box-shadow: 6px 6px 0 var(--context-shadow);
+    }
+
+    .principle-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .principle-item {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 12px;
+      border: 2px solid rgba(22, 22, 22, 0.76);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .principle-mark {
+      width: 32px;
+      height: 32px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 2px 2px 0 var(--ink);
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .principle-item h3 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    .principle-item p {
+      margin: 4px 0 0;
+      font-size: 14px;
+      line-height: 1.38;
+      font-weight: 500;
+    }
+
+    .ai-final {
+      margin: 24px auto 0;
+      max-width: 1180px;
+      padding: 18px 24px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 14px;
+      align-items: center;
+      box-shadow: 6px 6px 0 var(--action-shadow);
+      background: var(--white);
+    }
+
+    .signature-seal {
+      width: 56px;
+      height: 56px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 3px solid var(--ink);
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 3px 3px 0 var(--ink);
+      font-size: 25px;
+      font-weight: 800;
+    }
+
+    .ai-final strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 20px;
+      line-height: 1.3;
+      font-weight: 700;
+    }
+
+    .ai-final span {
+      font-size: 16px;
+      line-height: 1.42;
+      font-weight: 500;
+    }
+
+    @keyframes stepPulse {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-7px); }
+    }
+
+    .modal[hidden] {
+      display: none;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      background:
+        radial-gradient(circle at 22% 14%, rgba(245, 197, 24, 0.18), transparent 26%),
+        radial-gradient(circle at 78% 86%, rgba(117, 169, 191, 0.18), transparent 26%),
+        rgba(18, 18, 18, 0.58);
+      animation: fadeIn 180ms ease both;
+    }
+
+    .modal-panel {
+      position: relative;
+      width: min(1020px, calc(100vw - 44px));
+      max-height: min(890px, calc(100vh - 48px));
+      overflow: auto;
+      padding: 0;
+      border: 3px solid var(--ink);
+      border-radius: 22px;
+      background:
+        linear-gradient(rgba(255,255,255,0.74), rgba(255,255,255,0.74)),
+        var(--modal-fill, var(--white));
+      box-shadow: 10px 10px 0 var(--modal-shadow, var(--accent));
+      animation: modalIn 230ms ease both;
+    }
+
+    .modal-header {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 22px 24px 18px;
+      border-bottom: 3px solid var(--ink);
+      background:
+        linear-gradient(rgba(255,255,255,0.8), rgba(255,255,255,0.8)),
+        var(--modal-fill, var(--white));
+    }
+
+    .modal-title {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 29px;
+      line-height: 1.08;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .modal-subtitle {
+      margin: 7px 0 0 50px;
+      font-size: 15px;
+      line-height: 1.35;
+      font-weight: 600;
+    }
+
+    .quiz-meta {
+      margin: 12px 0 0 50px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .meta-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 11px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 2px 2px 0 var(--ink);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .close-btn {
+      width: 42px;
+      height: 42px;
+      flex: 0 0 42px;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: var(--white);
+      box-shadow: 3px 3px 0 var(--ink);
+      cursor: pointer;
+      font-size: 24px;
+      font-weight: 800;
+      line-height: 1;
+      transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
+    }
+
+    .close-btn:hover,
+    .close-btn:focus-visible {
+      transform: translate(-1px, -1px);
+      box-shadow: 5px 5px 0 var(--ink);
+      background: #fff6ca;
+    }
+
+    .quiz-list {
+      display: grid;
+      gap: 18px;
+      padding: 22px 24px 24px;
+    }
+
+    .q-card {
+      position: relative;
+      padding: 16px;
+      border: 2px solid var(--ink);
+      border-radius: 18px 14px 20px 14px;
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 4px 4px 0 var(--ink);
+      animation: cardRise 260ms ease both;
+    }
+
+    .q-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 18px;
+      bottom: 18px;
+      width: 8px;
+      border-radius: 0 999px 999px 0;
+      background: var(--modal-shadow, var(--accent));
+    }
+
+    .q-card h3 {
+      margin: 0 0 13px;
+      padding: 10px 12px 10px 8px;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: start;
+      border: 2px solid rgba(22, 22, 22, 0.7);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.72);
+      font-size: 18px;
+      line-height: 1.28;
+      font-weight: 700;
+    }
+
+    .q-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 30px;
+      height: 30px;
+      padding: 0 9px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: var(--modal-shadow, var(--white));
+      box-shadow: 2px 2px 0 var(--ink);
+      font-size: 14px;
+      line-height: 1;
+    }
+
+    .question-text {
+      padding-top: 2px;
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .option-btn {
+      min-height: 54px;
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border: 2px solid rgba(22, 22, 22, 0.75);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.9);
+      color: var(--ink);
+      cursor: pointer;
+      font: inherit;
+      font-size: 15px;
+      line-height: 1.25;
+      font-weight: 600;
+      text-align: left;
+      transition: transform 150ms ease, background 150ms ease, box-shadow 150ms ease, border-color 150ms ease;
+    }
+
+    .option-btn:hover {
+      transform: translate(-2px, -2px);
+      background: #fff6ca;
+      box-shadow: 4px 4px 0 rgba(22, 22, 22, 0.82);
+    }
+
+    .option-key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 25px;
+      height: 25px;
+      flex: 0 0 25px;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: var(--white);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .option-text {
+      min-width: 0;
+    }
+
+    .option-btn.is-correct {
+      border-color: var(--correct);
+      background: #d8f8e2;
+      box-shadow: 4px 4px 0 rgba(13, 107, 53, 0.6);
+    }
+
+    .option-btn.is-correct .option-key {
+      border-color: var(--correct);
+      background: var(--correct);
+      color: var(--white);
+    }
+
+    .option-btn.is-wrong {
+      border-color: var(--wrong);
+      background: #ffe0e0;
+      box-shadow: 4px 4px 0 rgba(156, 41, 41, 0.45);
+    }
+
+    .option-btn.is-wrong .option-key {
+      border-color: var(--wrong);
+      background: var(--wrong);
+      color: var(--white);
+    }
+
+    .feedback {
+      min-height: 34px;
+      margin: 12px 0 0;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      border: 2px dashed rgba(22, 22, 22, 0.5);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.62);
+      color: #555;
+      font-size: 14px;
+      line-height: 1.25;
+      font-weight: 700;
+    }
+
+    .feedback.correct {
+      color: #0d6b35;
+      border-color: var(--correct);
+      background: #e9fff0;
+    }
+
+    .feedback.wrong {
+      color: #9c2929;
+      border-color: var(--wrong);
+      background: #fff0f0;
+    }
+
+    @media (max-width: 760px) {
+      .options {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: translate(-50%, -44%) rotate(var(--tilt, 0deg)) scale(0.95); }
+      to { opacity: 1; transform: translate(-50%, -50%) rotate(var(--tilt, 0deg)) scale(1); }
+    }
+
+    @keyframes floatNode {
+      0%, 100% { transform: translate(-50%, -50%) rotate(var(--tilt, 0deg)); }
+      50% { transform: translate(-50%, calc(-50% - 5px)) rotate(var(--tilt, 0deg)); }
+    }
+
+    @keyframes drawLine {
+      from { stroke-dasharray: 1 900; stroke-dashoffset: 160; }
+      to { stroke-dasharray: 900 0; stroke-dashoffset: 0; }
+    }
+
+    @keyframes cardRise {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(14px) scale(0.96); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes twinkle {
+      0%, 100% { transform: rotate(-8deg) scale(1); opacity: 0.7; }
+      50% { transform: rotate(10deg) scale(1.18); opacity: 1; }
+    }
+
+    @keyframes glow {
+      0%, 100% { filter: drop-shadow(0 0 0 rgba(245, 197, 24, 0)); }
+      50% { filter: drop-shadow(0 0 10px rgba(245, 197, 24, 0.7)); }
+    }
+  </style>
+</head>
+<body>
+  <main class="scroll-shell" aria-label="Concept map về thời kỳ quá độ lên chủ nghĩa xã hội">
+    <nav class="tab-bar" aria-label="Chọn phần nội dung">
+      <button class="tab-btn is-active" type="button" data-tab="mapTab" aria-selected="true">Concept map</button>
+      <button class="tab-btn" type="button" data-tab="visualTab" aria-selected="false">Vì sao lâu dài?</button>
+      <button class="tab-btn" type="button" data-tab="aiTab" aria-selected="false">Cam kết dùng AI</button>
+    </nav>
+
+    <section class="tab-panel" id="mapTab">
+      <div class="stage">
+      <section class="canvas" aria-label="Thời kỳ quá độ lên CNXH được minh họa như một cây cầu lịch sử">
+        <svg class="arrow-layer" viewBox="0 0 1600 950" aria-hidden="true" focusable="false">
+          <defs>
+            <filter id="sketch">
+              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="5" result="noise"/>
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.5" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+            <filter id="lineSketch">
+              <feTurbulence type="fractalNoise" baseFrequency="0.032" numOctaves="3" result="rough"/>
+              <feDisplacementMap in="SourceGraphic" in2="rough" scale="0.8" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+            <marker id="arrow-context" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+              <path d="M 0 0 L 12 6 L 0 12 Z" fill="#4f8fa8"/>
+            </marker>
+            <marker id="arrow-action" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+              <path d="M 0 0 L 12 6 L 0 12 Z" fill="#55a75f"/>
+            </marker>
+            <marker id="arrow-future" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+              <path d="M 0 0 L 12 6 L 0 12 Z" fill="#ed6748"/>
+            </marker>
+          </defs>
+          <g class="connector context">
+            <path class="connector-piece root" d="M 565 420 C 522 404 486 402 438 411"/>
+            <path class="connector-piece mid" d="M 438 411 C 392 419 358 430 326 424"/>
+            <path class="connector-piece tip" d="M 326 424 C 317 422 308 421 300 421" marker-end="url(#arrow-context)"/>
+          </g>
+          <g class="connector future">
+            <path class="connector-piece root" d="M 936 419 C 990 397 1045 401 1104 416"/>
+            <path class="connector-piece mid" d="M 1104 416 C 1138 425 1166 427 1189 423"/>
+            <path class="connector-piece tip" d="M 1189 423 C 1195 421 1200 421 1205 421" marker-end="url(#arrow-future)"/>
+          </g>
+          <g class="connector context">
+            <path class="connector-piece root" d="M 668 356 C 641 324 613 305 584 292"/>
+            <path class="connector-piece mid" d="M 584 292 C 552 277 524 272 497 269"/>
+            <path class="connector-piece tip" d="M 497 269 C 489 267 481 266 474 265" marker-end="url(#arrow-context)"/>
+          </g>
+          <g class="connector action">
+            <path class="connector-piece root" d="M 835 356 C 869 320 897 301 928 290"/>
+            <path class="connector-piece mid" d="M 928 290 C 954 281 977 278 999 272"/>
+            <path class="connector-piece tip" d="M 999 272 C 1007 269 1015 267 1022 265" marker-end="url(#arrow-action)"/>
+          </g>
+          <g class="connector action">
+            <path class="connector-piece root" d="M 750 505 C 766 535 732 555 746 575"/>
+            <path class="connector-piece mid" d="M 746 575 C 753 587 748 595 750 601"/>
+            <path class="connector-piece tip" d="M 750 601 C 751 605 751 609 750 613" marker-end="url(#arrow-action)"/>
+          </g>
+          <g class="connector context">
+            <path class="connector-piece root" d="M 662 493 C 596 524 540 565 492 608"/>
+            <path class="connector-piece mid" d="M 492 608 C 466 632 447 652 434 662"/>
+            <path class="connector-piece tip" d="M 434 662 C 430 664 427 666 424 668" marker-end="url(#arrow-context)"/>
+          </g>
+          <g class="connector action">
+            <path class="connector-piece root" d="M 838 493 C 908 526 962 568 1010 610"/>
+            <path class="connector-piece mid" d="M 1010 610 C 1038 634 1056 654 1069 663"/>
+            <path class="connector-piece tip" d="M 1069 663 C 1073 665 1076 667 1079 669" marker-end="url(#arrow-action)"/>
+          </g>
+        </svg>
+
+        <svg class="lightbulb" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+          <path d="M50 13 C33 13 23 26 23 41 C23 52 31 59 36 66 C39 70 38 75 38 77 L62 77 C62 73 62 70 65 66 C71 59 77 52 77 41 C77 25 66 13 50 13 Z" fill="none" stroke="#161616" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" filter="url(#lineSketch)"/>
+          <path d="M39 84 L61 84 M41 91 L59 91 M50 4 L50 0 M19 15 L13 10 M81 15 L88 10 M12 43 L4 43 M88 43 L96 43" fill="none" stroke="#161616" stroke-width="4" stroke-linecap="round" filter="url(#lineSketch)"/>
+          <path d="M43 41 C48 35 55 35 58 41 C61 47 54 52 49 57" fill="none" stroke="#f5c518" stroke-width="5" stroke-linecap="round" filter="url(#lineSketch)"/>
+        </svg>
+
+        <div class="star one">✦</div>
+        <div class="star two">✦</div>
+        <div class="star three">✦</div>
+
+        <div class="node left-node group-context" role="button" tabindex="0" data-quiz="start" style="left: 150px; top: 420px; --tilt: -1.5deg; --delay: 60ms;">
+          <span class="node-content">
+            <h2><span class="title-icon">⚓</span><span>ĐIỂM XUẤT PHÁT</span></h2>
+            <ul>
+              <li>Thuộc địa nửa phong kiến</li>
+              <li>Kinh tế nghèo nàn, lạc hậu</li>
+              <li>Lực lượng sản xuất thấp</li>
+              <li>Chiến tranh kéo dài</li>
+            </ul>
+          </span>
+        </div>
+
+        <div class="node top-node group-context" role="button" tabindex="0" data-quiz="why" style="left: 420px; top: 170px; --tilt: 1.2deg; --delay: 120ms;">
+          <span class="node-content">
+            <h2><span class="title-icon">?</span><span>VÌ SAO CẦN QUÁ ĐỘ?</span></h2>
+            <ul>
+              <li>Không thể có CNXH ngay lập tức</li>
+              <li>Xã hội cũ còn nhiều tàn dư</li>
+              <li>LLSX chưa phát triển cao</li>
+              <li>Cần cải tạo cái cũ, xây dựng cái mới</li>
+            </ul>
+          </span>
+        </div>
+
+        <div class="node main-node" style="left: 750px; top: 420px; --tilt: -0.6deg; --delay: 0ms;">
+          <div class="node-content">
+            <div class="main-title">THỜI KỲ QUÁ ĐỘ LÊN CNXH</div>
+            <div class="bridge-visual" aria-hidden="true">
+              <svg viewBox="0 0 220 54" focusable="false">
+                <path d="M18 37 C55 8 163 9 202 37" fill="none" stroke="#161616" stroke-width="4" stroke-linecap="round" filter="url(#lineSketch)"/>
+                <path d="M19 38 L202 38" fill="none" stroke="#161616" stroke-width="4" stroke-linecap="round" filter="url(#lineSketch)"/>
+                <path d="M48 36 L48 46 M78 28 L78 46 M110 23 L110 46 M142 28 L142 46 M172 36 L172 46" fill="none" stroke="#161616" stroke-width="3" stroke-linecap="round" filter="url(#lineSketch)"/>
+                <path d="M28 47 C73 51 142 51 193 46" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" opacity="0.72"/>
+              </svg>
+            </div>
+            <div class="main-subtitle">CẦU NỐI LỊCH SỬ</div>
+          </div>
+        </div>
+
+        <div class="node top-node group-action" role="button" tabindex="0" data-quiz="feature" style="left: 1050px; top: 170px; --tilt: -1.1deg; --delay: 180ms;">
+          <span class="node-content">
+            <h2><span class="title-icon">✦</span><span>ĐẶC ĐIỂM VIỆT NAM</span></h2>
+            <ul>
+              <li>Bỏ qua chế độ TBCN</li>
+              <li>Không bỏ qua thành tựu nhân loại</li>
+              <li>Tiếp thu KH-CN, quản lý tiên tiến</li>
+              <li>Quá trình khó khăn, phức tạp, lâu dài</li>
+            </ul>
+          </span>
+        </div>
+
+        <div class="node right-node group-future" role="button" tabindex="0" data-quiz="goal" style="left: 1380px; top: 420px; --tilt: 1deg; --delay: 240ms;">
+          <span class="node-content">
+            <h2><span class="title-icon">⚑</span><span>MỤC TIÊU CNXH</span></h2>
+            <ul>
+              <li>Dân giàu — Nước mạnh</li>
+              <li>Dân chủ — Công bằng — Văn minh</li>
+              <li>Nhân dân lao động làm chủ</li>
+              <li>Quan hệ hữu nghị quốc tế</li>
+            </ul>
+            <span class="year-row" aria-label="Các mốc mục tiêu 2025, 2030, 2045">
+              <span class="year-pill">2025</span>
+              <span>→</span>
+              <span class="year-pill">2030</span>
+              <span>→</span>
+              <span class="year-pill">2045</span>
+            </span>
+          </span>
+        </div>
+
+        <div class="node condition-node group-context" role="button" tabindex="0" data-quiz="condition" style="left: 250px; top: 750px; --tilt: -1deg; --delay: 300ms;">
+          <span class="node-content">
+            <h2><span class="title-icon">🌐</span><span>ĐIỀU KIỆN KHÁCH QUAN</span></h2>
+            <ul>
+              <li>Bối cảnh thời đại</li>
+              <li>Toàn cầu hóa</li>
+              <li>Cách mạng KH-CN</li>
+              <li>Xu thế hợp tác &amp; cạnh tranh</li>
+            </ul>
+          </span>
+        </div>
+
+        <div class="node bridge-node group-action" role="button" tabindex="0" data-quiz="bridge" style="left: 750px; top: 720px; --tilt: 0.7deg; --delay: 360ms;">
+          <span class="node-content">
+            <h2><span class="title-icon">▱</span><span>CÁC NHỊP CẦU TRUNG GIAN</span></h2>
+            <span class="bridge-steps">
+              <span class="bridge-step">Phát triển kinh tế</span>
+              <span class="bridge-step">Công nghiệp hóa — Hiện đại hóa</span>
+              <span class="bridge-step">Kinh tế TT định hướng XHCN</span>
+              <span class="bridge-step">Nhà nước pháp quyền XHCN</span>
+              <span class="bridge-step">Văn hóa và con người</span>
+              <span class="bridge-step">Hội nhập quốc tế</span>
+            </span>
+          </span>
+        </div>
+
+        <div class="node condition-node group-action" role="button" tabindex="0" data-quiz="condition" style="left: 1250px; top: 750px; --tilt: 1.4deg; --delay: 420ms;">
+          <span class="node-content">
+            <h2><span class="title-icon">🧠</span><span>ĐIỀU KIỆN CHỦ QUAN</span></h2>
+            <ul>
+              <li>Đường lối đúng đắn của Đảng</li>
+              <li>Nhà nước tổ chức &amp; quản lý</li>
+              <li>Nhân dân tham gia xây dựng</li>
+              <li>Đoàn kết toàn dân tộc</li>
+            </ul>
+          </span>
+        </div>
+
+        <div class="exclaim" aria-hidden="true">!</div>
+        <div class="footer-note">"Quá độ là quá trình lâu dài, nhiều bước trung gian."</div>
+      </section>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="visualTab" hidden>
+      <div class="visual-stage">
+        <section class="visual-canvas" aria-label="Sơ đồ trực quan giải thích vì sao quá độ là quá trình lâu dài, nhiều bước trung gian">
+          <h1 class="visual-title">Vì sao quá độ là quá trình lâu dài, nhiều bước trung gian?</h1>
+          <p class="visual-lead">
+            Không thể đi thẳng từ xã hội cũ đến mục tiêu CNXH. Cần nhiều nhịp chuyển tiếp để vừa cải tạo cái cũ, vừa xây dựng nền tảng mới về kinh tế, chính trị, văn hóa, con người và hội nhập.
+          </p>
+
+          <div class="visual-grid">
+            <article class="visual-card shortcut-card">
+              <h2>1. Đường tắt bị chặn</h2>
+              <div class="jump-diagram" aria-label="Đường tắt từ xã hội cũ đến CNXH bị chặn">
+                <div class="jump-node old">Xã hội cũ<br>xuất phát thấp</div>
+                <svg class="jump-arrow" viewBox="0 0 160 110" aria-hidden="true" focusable="false">
+                  <path d="M8 92 C42 8 108 8 148 90" fill="none" stroke="#d94343" stroke-width="5" stroke-linecap="round" stroke-dasharray="10 8"/>
+                  <path d="M136 82 L150 92 L134 98" fill="none" stroke="#d94343" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div class="block-sign">×</div>
+                <div class="jump-node goal">Mục tiêu<br>CNXH</div>
+              </div>
+              <ul class="shortcut-list">
+                <li>Xuất phát điểm thấp: kinh tế lạc hậu, lực lượng sản xuất chưa cao.</li>
+                <li>Xã hội cũ còn tàn dư cần cải tạo, không thể thay đổi ngay lập tức.</li>
+                <li>Mục tiêu CNXH cần nền tảng vật chất, thể chế, văn hóa và con người mới.</li>
+              </ul>
+            </article>
+
+            <article class="visual-card bridge-card">
+              <h2>2. Đi qua từng nhịp cầu</h2>
+              <div class="bridge-flow" aria-label="Các nhịp cầu trung gian">
+                <div class="end-state old">Điểm xuất phát<br>nhiều khó khăn</div>
+                <div class="span-track">
+                  <div class="span-step" style="--i: 0;"><span class="span-number">1</span>Phát triển kinh tế</div>
+                  <div class="span-step" style="--i: 1;"><span class="span-number">2</span>CNH - HĐH</div>
+                  <div class="span-step" style="--i: 2;"><span class="span-number">3</span>Kinh tế TT định hướng XHCN</div>
+                  <div class="span-step" style="--i: 3;"><span class="span-number">4</span>Nhà nước pháp quyền XHCN</div>
+                  <div class="span-step" style="--i: 4;"><span class="span-number">5</span>Văn hóa và con người</div>
+                  <div class="span-step" style="--i: 5;"><span class="span-number">6</span>Hội nhập quốc tế</div>
+                </div>
+                <div class="end-state goal">Đích đến<br>dân giàu, nước mạnh</div>
+              </div>
+              <p class="bridge-note">
+                Mỗi nhịp là một nhiệm vụ phải tích lũy dần. Bỏ một nhịp thì cây cầu thiếu nền, quá trình chuyển hóa không bền vững.
+              </p>
+            </article>
+          </div>
+
+          <div class="reason-grid" aria-label="Bốn lý do làm quá trình quá độ lâu dài">
+            <article class="reason-card">
+              <span class="reason-icon">1</span>
+              <h3>Cái cũ không mất ngay</h3>
+              <p>Tàn dư kinh tế, tư tưởng, thói quen quản lý và quan hệ xã hội cũ cần thời gian cải tạo.</p>
+            </article>
+            <article class="reason-card">
+              <span class="reason-icon">2</span>
+              <h3>Cái mới phải xây từ nền</h3>
+              <p>Muốn có CNXH cần tạo cơ sở vật chất, lực lượng sản xuất, pháp luật, văn hóa và con người phù hợp.</p>
+            </article>
+            <article class="reason-card">
+              <span class="reason-icon">3</span>
+              <h3>Nhiều lĩnh vực cùng biến đổi</h3>
+              <p>Không chỉ kinh tế, mà còn chính trị, xã hội, văn hóa, đối ngoại và năng lực quản lý quốc gia.</p>
+            </article>
+            <article class="reason-card">
+              <span class="reason-icon">4</span>
+              <h3>Cần đủ điều kiện</h3>
+              <p>Phải kết hợp bối cảnh khách quan với đường lối, Nhà nước, nhân dân và đoàn kết toàn dân tộc.</p>
+            </article>
+          </div>
+
+          <div class="formula-strip">
+            Xuất phát thấp + cải tạo cái cũ + xây dựng cái mới + nhiều điều kiện = quá trình lâu dài, nhiều bước trung gian
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="aiTab" hidden>
+      <div class="ai-stage">
+        <section class="ai-canvas" aria-label="Cam kết sử dụng AI trong quá trình làm concept map">
+          <h1 class="ai-title">Cam kết dùng AI</h1>
+          <p class="ai-lead">
+            AI được dùng như công cụ hỗ trợ học tập và trình bày ý tưởng. Người làm vẫn chịu trách nhiệm kiểm tra nội dung, hiểu kiến thức và hoàn thiện sản phẩm cuối cùng.
+          </p>
+
+          <div class="ai-layout">
+            <article class="pledge-panel">
+              <h2><span class="ai-badge">AI</span><span>Cách tôi sử dụng AI</span></h2>
+              <p class="pledge-text">
+                Tôi sử dụng AI để hỗ trợ sắp xếp nội dung, gợi ý bố cục trực quan, tạo giao diện HTML/CSS và biến kiến thức thành câu hỏi trắc nghiệm. Tôi không xem AI là nguồn thay thế việc học, mà là công cụ để diễn đạt bài học rõ hơn.
+              </p>
+              <div class="pledge-flow" aria-label="Quy trình dùng AI có trách nhiệm">
+                <div class="pledge-step"><span class="pledge-icon">1</span>Đưa yêu cầu và nội dung bài học</div>
+                <div class="pledge-step"><span class="pledge-icon">2</span>Nhờ AI gợi ý bố cục, màu, quiz</div>
+                <div class="pledge-step"><span class="pledge-icon">3</span>Tự đọc lại, sửa, kiểm tra ý nghĩa</div>
+                <div class="pledge-step"><span class="pledge-icon">4</span>Nộp sản phẩm đã hiểu và chịu trách nhiệm</div>
+              </div>
+            </article>
+
+            <article class="ai-principles">
+              <h2><span class="ai-badge">✓</span><span>Nguyên tắc cam kết</span></h2>
+              <div class="principle-list">
+                <div class="principle-item">
+                  <span class="principle-mark">1</span>
+                  <div>
+                    <h3>Minh bạch</h3>
+                    <p>Có sử dụng AI để hỗ trợ thiết kế, trình bày và tạo câu hỏi luyện tập.</p>
+                  </div>
+                </div>
+                <div class="principle-item">
+                  <span class="principle-mark">2</span>
+                  <div>
+                    <h3>Không sao chép mù quáng</h3>
+                    <p>Nội dung được đọc lại, chỉnh sửa và đối chiếu với tài liệu bài học.</p>
+                  </div>
+                </div>
+                <div class="principle-item">
+                  <span class="principle-mark">3</span>
+                  <div>
+                    <h3>Không thay thế tư duy</h3>
+                    <p>AI chỉ hỗ trợ diễn đạt; người học vẫn phải hiểu vì sao quá độ là quá trình lâu dài.</p>
+                  </div>
+                </div>
+                <div class="principle-item">
+                  <span class="principle-mark">4</span>
+                  <div>
+                    <h3>Chịu trách nhiệm</h3>
+                    <p>Nếu có sai sót về kiến thức, người làm sẽ sửa lại và không đổ lỗi cho AI.</p>
+                  </div>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div class="ai-final">
+            <span class="signature-seal">!</span>
+            <div>
+              <strong>Cam kết cuối cùng</strong>
+              <span>Tôi dùng AI để làm sản phẩm dễ hiểu và trực quan hơn, nhưng vẫn giữ trách nhiệm cá nhân với nội dung, cách trình bày và phần kiến thức đã học.</span>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <div class="modal" id="quizModal" hidden>
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" id="modalTitle"></h2>
+          <p class="modal-subtitle">Chọn một đáp án. Nếu chọn sai, đáp án đúng sẽ hiện màu xanh.</p>
+          <div class="quiz-meta" aria-label="Thông tin bài trắc nghiệm">
+            <span class="meta-pill">4 câu hỏi</span>
+            <span class="meta-pill">Chọn trực tiếp trên đáp án</span>
+            <span class="meta-pill">Có phản hồi ngay</span>
+          </div>
+        </div>
+        <button class="close-btn" type="button" aria-label="Đóng popup">×</button>
+      </div>
+      <div class="quiz-list" id="quizList"></div>
+    </div>
+  </div>
+
+  <script>
+    const tabButtons = document.querySelectorAll("[data-tab]");
+    const tabPanels = document.querySelectorAll(".tab-panel");
+
+    function activateTab(tabId) {
+      tabButtons.forEach((button) => {
+        const active = button.dataset.tab === tabId;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-selected", String(active));
+      });
+
+      tabPanels.forEach((panel) => {
+        panel.hidden = panel.id !== tabId;
+      });
+    }
+
+    tabButtons.forEach((button) => {
+      button.addEventListener("click", () => activateTab(button.dataset.tab));
+    });
+
+    const quizzes = {
+      start: {
+        title: "Node 1: Điểm Xuất Phát",
+        icon: "⚓",
+        fill: "#dcebf1",
+        shadow: "#75a9bf",
+        questions: [
+          {
+            text: "Việt Nam bước vào thời kỳ quá độ lên CNXH từ xuất phát điểm như thế nào?",
+            answer: "B",
+            options: {
+              A: "Kinh tế phát triển cao",
+              B: "Thuộc địa nửa phong kiến, lực lượng sản xuất thấp",
+              C: "Đã hoàn thành công nghiệp hóa",
+              D: "Không chịu ảnh hưởng của chiến tranh"
+            }
+          },
+          {
+            text: "Một khó khăn lớn của Việt Nam khi quá độ lên CNXH là gì?",
+            answer: "C",
+            options: {
+              A: "Không có dân cư",
+              B: "Không có quan hệ quốc tế",
+              C: "Chiến tranh kéo dài, để lại nhiều hậu quả",
+              D: "Không cần phát triển kinh tế"
+            }
+          },
+          {
+            text: "Mốc năm 1954 gắn với sự kiện nào trong quá trình quá độ ở Việt Nam?",
+            answer: "B",
+            options: {
+              A: "Cả nước bước vào thời kỳ quá độ",
+              B: "Miền Bắc bước vào thời kỳ quá độ",
+              C: "Việt Nam trở thành nước phát triển",
+              D: "Hoàn thành mục tiêu 2045"
+            }
+          },
+          {
+            text: "Mốc năm 1975 có ý nghĩa gì?",
+            answer: "B",
+            options: {
+              A: "Miền Bắc bắt đầu quá độ",
+              B: "Cả nước bước vào thời kỳ quá độ",
+              C: "Kết thúc toàn cầu hóa",
+              D: "Bắt đầu chế độ tư bản chủ nghĩa"
+            }
+          }
+        ]
+      },
+      why: {
+        title: "Node 2: Vì Sao Cần Thời Kỳ Quá Độ?",
+        icon: "?",
+        fill: "#dcebf1",
+        shadow: "#75a9bf",
+        questions: [
+          {
+            text: "Vì sao không thể có CNXH ngay lập tức?",
+            answer: "B",
+            options: {
+              A: "Vì CNXH không cần xây dựng",
+              B: "Vì xã hội cũ còn nhiều tàn dư cần cải tạo",
+              C: "Vì không cần lực lượng sản xuất",
+              D: "Vì không cần nhà nước"
+            }
+          },
+          {
+            text: "Thời kỳ quá độ được hiểu là gì?",
+            answer: "A",
+            options: {
+              A: "Giai đoạn chuyển tiếp từ xã hội cũ sang xã hội XHCN",
+              B: "Giai đoạn quay lại xã hội phong kiến",
+              C: "Giai đoạn không có mục tiêu phát triển",
+              D: "Giai đoạn tách khỏi thế giới"
+            }
+          },
+          {
+            text: "Hình ảnh “cây cầu lịch sử” dùng để nhấn mạnh điều gì?",
+            answer: "B",
+            options: {
+              A: "Quá độ là một bước nhảy tức thời",
+              B: "Quá độ là quá trình có nhiều bước trung gian",
+              C: "Quá độ không cần điều kiện",
+              D: "Quá độ chỉ diễn ra trong kinh tế"
+            }
+          },
+          {
+            text: "Trong thời kỳ quá độ, nhiệm vụ quan trọng là gì?",
+            answer: "B",
+            options: {
+              A: "Chỉ thay đổi tên gọi chế độ",
+              B: "Cải tạo cái cũ và xây dựng cái mới",
+              C: "Bỏ qua toàn bộ phát triển kinh tế",
+              D: "Không cần phát triển con người"
+            }
+          }
+        ]
+      },
+      feature: {
+        title: "Node 3: Đặc Điểm Con Đường Việt Nam",
+        icon: "✦",
+        fill: "#def0d4",
+        shadow: "#78bd71",
+        questions: [
+          {
+            text: "Việt Nam quá độ lên CNXH theo đặc điểm nào?",
+            answer: "A",
+            options: {
+              A: "Bỏ qua chế độ tư bản chủ nghĩa",
+              B: "Xây dựng chế độ tư bản chủ nghĩa hoàn chỉnh trước",
+              C: "Không cần phát triển kinh tế",
+              D: "Tách khỏi mọi thành tựu nhân loại"
+            }
+          },
+          {
+            text: "“Bỏ qua chế độ tư bản chủ nghĩa” nên hiểu đúng là gì?",
+            answer: "B",
+            options: {
+              A: "Bỏ qua mọi thành tựu của CNTB",
+              B: "Không xác lập vị trí thống trị của QHSX và KTTT TBCN",
+              C: "Không cần khoa học - công nghệ",
+              D: "Không cần quản lý xã hội"
+            }
+          },
+          {
+            text: "Việt Nam có tiếp thu thành tựu của nhân loại trong quá trình quá độ không?",
+            answer: "A",
+            options: {
+              A: "Có, nhất là khoa học, công nghệ, quản lý",
+              B: "Không, vì phải phủ nhận toàn bộ",
+              C: "Chỉ tiếp thu văn hóa cổ đại",
+              D: "Chỉ tiếp thu quân sự"
+            }
+          },
+          {
+            text: "Quá trình quá độ ở Việt Nam có tính chất gì?",
+            answer: "B",
+            options: {
+              A: "Nhanh, đơn giản, ngắn hạn",
+              B: "Khó khăn, phức tạp, lâu dài",
+              C: "Không cần kế hoạch",
+              D: "Không có bước trung gian"
+            }
+          }
+        ]
+      },
+      bridge: {
+        title: "Node 4: Các Nhịp Cầu Trung Gian",
+        icon: "▱",
+        fill: "#def0d4",
+        shadow: "#78bd71",
+        questions: [
+          {
+            text: "“Nhịp cầu trung gian” trong concept map tượng trưng cho điều gì?",
+            answer: "A",
+            options: {
+              A: "Các bước, nhiệm vụ cần đi qua trong thời kỳ quá độ",
+              B: "Một công trình xây dựng thật",
+              C: "Một giai đoạn không quan trọng",
+              D: "Một yếu tố trang trí"
+            }
+          },
+          {
+            text: "Nội dung nào là một nhịp cầu quan trọng trong quá độ?",
+            answer: "A",
+            options: {
+              A: "Phát triển kinh tế",
+              B: "Dừng công nghiệp hóa",
+              C: "Không hội nhập quốc tế",
+              D: "Xóa bỏ giáo dục"
+            }
+          },
+          {
+            text: "Kinh tế thị trường định hướng XHCN thuộc nhóm nội dung nào?",
+            answer: "A",
+            options: {
+              A: "Bước trung gian trong xây dựng kinh tế",
+              B: "Mục tiêu loại bỏ kinh tế",
+              C: "Chính sách không liên quan quá độ",
+              D: "Đặc điểm của xã hội nguyên thủy"
+            }
+          },
+          {
+            text: "Vì sao cần nhiều nhịp cầu trung gian?",
+            answer: "A",
+            options: {
+              A: "Vì quá độ là quá trình biến đổi toàn diện",
+              B: "Vì chỉ cần thay đổi một lĩnh vực",
+              C: "Vì không cần thực tiễn",
+              D: "Vì CNXH có sẵn ngay từ đầu"
+            }
+          }
+        ]
+      },
+      condition: {
+        title: "Node 5: Điều Kiện Để Đi Qua Cây Cầu",
+        icon: "🧠",
+        fill: "#def0d4",
+        shadow: "#78bd71",
+        questions: [
+          {
+            text: "Điều kiện khách quan bao gồm yếu tố nào?",
+            answer: "A",
+            options: {
+              A: "Toàn cầu hóa và cách mạng khoa học - công nghệ",
+              B: "Ý thích cá nhân",
+              C: "Một khẩu hiệu duy nhất",
+              D: "Không có bối cảnh quốc tế"
+            }
+          },
+          {
+            text: "Điều kiện chủ quan bao gồm yếu tố nào?",
+            answer: "A",
+            options: {
+              A: "Vai trò lãnh đạo, đường lối, Nhà nước và nhân dân",
+              B: "Thời tiết",
+              C: "Chỉ địa hình tự nhiên",
+              D: "Ngẫu nhiên lịch sử"
+            }
+          },
+          {
+            text: "Muốn đi qua “cây cầu quá độ”, cần gì?",
+            answer: "B",
+            options: {
+              A: "Chỉ cần mong muốn",
+              B: "Cả điều kiện khách quan và chủ quan",
+              C: "Chỉ cần bỏ qua phát triển kinh tế",
+              D: "Không cần tổ chức thực hiện"
+            }
+          },
+          {
+            text: "Vai trò của nhân dân trong thời kỳ quá độ là gì?",
+            answer: "B",
+            options: {
+              A: "Đứng ngoài quá trình xây dựng xã hội mới",
+              B: "Tham gia xây dựng và làm chủ xã hội mới",
+              C: "Không liên quan đến chính trị - xã hội",
+              D: "Chỉ quan sát"
+            }
+          }
+        ]
+      },
+      goal: {
+        title: "Node 6: Mục Tiêu Hướng Tới",
+        icon: "⚑",
+        fill: "#fff0a8",
+        shadow: "#ff7a59",
+        questions: [
+          {
+            text: "Mục tiêu tổng quát được nêu trong Cương lĩnh là gì?",
+            answer: "A",
+            options: {
+              A: "Dân giàu, nước mạnh, dân chủ, công bằng, văn minh",
+              B: "Nghèo nàn, lạc hậu, biệt lập",
+              C: "Chỉ phát triển kinh tế, bỏ qua xã hội",
+              D: "Không cần dân chủ"
+            }
+          },
+          {
+            text: "Mục tiêu năm 2030 là gì?",
+            answer: "A",
+            options: {
+              A: "Nước đang phát triển, công nghiệp hiện đại, thu nhập trung bình cao",
+              B: "Nước phát triển, thu nhập cao",
+              C: "Bắt đầu thời kỳ quá độ",
+              D: "Hoàn toàn không công nghiệp hóa"
+            }
+          },
+          {
+            text: "Mục tiêu năm 2045 là gì?",
+            answer: "A",
+            options: {
+              A: "Nước phát triển, thu nhập cao",
+              B: "Nước thuộc địa nửa phong kiến",
+              C: "Nước không hội nhập",
+              D: "Nước có lực lượng sản xuất thấp"
+            }
+          },
+          {
+            text: "Đích đến của cây cầu quá độ là gì?",
+            answer: "A",
+            options: {
+              A: "Xây dựng xã hội XHCN theo mục tiêu đã định hướng",
+              B: "Quay lại xã hội cũ",
+              C: "Dừng phát triển",
+              D: "Phủ nhận toàn bộ thành tựu nhân loại"
+            }
+          }
+        ]
+      }
+    };
+
+    const modal = document.querySelector("#quizModal");
+    const modalPanel = modal.querySelector(".modal-panel");
+    const modalTitle = document.querySelector("#modalTitle");
+    const quizList = document.querySelector("#quizList");
+    const closeBtn = modal.querySelector(".close-btn");
+    let lastFocused = null;
+
+    function openQuiz(key) {
+      const quiz = quizzes[key];
+      if (!quiz) return;
+
+      lastFocused = document.activeElement;
+      modalPanel.style.setProperty("--modal-fill", quiz.fill);
+      modalPanel.style.setProperty("--modal-shadow", quiz.shadow);
+      modalTitle.innerHTML = `<span class="title-icon">${quiz.icon}</span><span>${quiz.title}</span>`;
+      quizList.innerHTML = quiz.questions.map((question, index) => renderQuestion(question, index)).join("");
+      modal.hidden = false;
+      document.body.style.overflow = "hidden";
+      closeBtn.focus();
+    }
+
+    function renderQuestion(question, index) {
+      const options = Object.entries(question.options).map(([key, value]) => `
+        <button class="option-btn" type="button" data-choice="${key}" data-answer="${question.answer}">
+          <span class="option-key">${key}</span>
+          <span class="option-text">${value}</span>
+        </button>
+      `).join("");
+
+      return `
+        <section class="q-card">
+          <h3><span class="q-number">${index + 1}</span><span class="question-text">${question.text}</span></h3>
+          <div class="options">${options}</div>
+          <div class="feedback" aria-live="polite">Chưa trả lời</div>
+        </section>
+      `;
+    }
+
+    function closeQuiz() {
+      modal.hidden = true;
+      document.body.style.overflow = "";
+      quizList.innerHTML = "";
+      if (lastFocused) lastFocused.focus();
+    }
+
+    document.querySelectorAll("[data-quiz]").forEach((node) => {
+      node.addEventListener("click", () => openQuiz(node.dataset.quiz));
+      node.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openQuiz(node.dataset.quiz);
+        }
+      });
+    });
+
+    closeBtn.addEventListener("click", closeQuiz);
+
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) closeQuiz();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !modal.hidden) closeQuiz();
+    });
+
+    quizList.addEventListener("click", (event) => {
+      const option = event.target.closest(".option-btn");
+      if (!option) return;
+
+      const card = option.closest(".q-card");
+      const answer = option.dataset.answer;
+      const selected = option.dataset.choice;
+      const feedback = card.querySelector(".feedback");
+
+      card.querySelectorAll(".option-btn").forEach((btn) => {
+        btn.classList.remove("is-correct", "is-wrong");
+        if (btn.dataset.choice === answer) btn.classList.add("is-correct");
+      });
+
+      if (selected === answer) {
+        feedback.textContent = `Đúng. Đáp án: ${answer}`;
+        feedback.className = "feedback correct";
+      } else {
+        option.classList.add("is-wrong");
+        feedback.textContent = `Chưa đúng. Đáp án đúng: ${answer}`;
+        feedback.className = "feedback wrong";
+      }
+    });
+
+    const hashQuiz = decodeURIComponent(location.hash.replace("#", ""));
+    if (hashQuiz === "visual") {
+      activateTab("visualTab");
+    }
+    if (hashQuiz === "ai") {
+      activateTab("aiTab");
+    }
+    if (quizzes[hashQuiz]) {
+      activateTab("mapTab");
+      setTimeout(() => openQuiz(hashQuiz), 250);
+    }
+  </script>
+</body>
+</html>
