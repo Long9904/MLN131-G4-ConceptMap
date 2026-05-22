@@ -26,6 +26,7 @@
       --center-shadow: #bf6f17;
       --correct: #20a35a;
       --wrong: #d94343;
+      --tab-scale: 0.9;
     }
 
     * {
@@ -97,12 +98,37 @@
     }
 
     .stage {
-      min-width: 1600px;
-      min-height: 950px;
-      padding: 24px;
+      --tab-frame-width: 1440px;
+      --tab-frame-height: 855px;
+      --tab-padding-x: 24px;
+      --tab-padding-top: 24px;
+      --tab-padding-bottom: 24px;
+      --tab-padding-inline: 48px;
+      --tab-padding-block: 48px;
+      min-width: calc(var(--tab-frame-width) + var(--tab-padding-inline));
+      min-height: calc(var(--tab-frame-height) + var(--tab-padding-block));
+      padding: var(--tab-padding-top) var(--tab-padding-x) var(--tab-padding-bottom);
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    .tab-scale-frame {
+      position: relative;
+      width: var(--tab-frame-width);
+      height: var(--tab-frame-height);
+      flex: 0 0 auto;
+      overflow: visible;
+    }
+
+    .tab-scale-frame > .canvas,
+    .tab-scale-frame > .visual-canvas,
+    .tab-scale-frame > .ai-canvas {
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform: scale(var(--tab-scale));
+      transform-origin: top left;
     }
 
     .canvas {
@@ -482,9 +508,16 @@
     }
 
     .visual-stage {
-      min-width: 1600px;
-      min-height: 900px;
-      padding: 16px 24px 24px;
+      --tab-frame-width: 1440px;
+      --tab-frame-height: 810px;
+      --tab-padding-x: 24px;
+      --tab-padding-top: 16px;
+      --tab-padding-bottom: 24px;
+      --tab-padding-inline: 48px;
+      --tab-padding-block: 40px;
+      min-width: calc(var(--tab-frame-width) + var(--tab-padding-inline));
+      min-height: calc(var(--tab-frame-height) + var(--tab-padding-block));
+      padding: var(--tab-padding-top) var(--tab-padding-x) var(--tab-padding-bottom);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -788,9 +821,16 @@
     }
 
     .ai-stage {
-      min-width: 1600px;
-      min-height: 900px;
-      padding: 16px 24px 24px;
+      --tab-frame-width: 1440px;
+      --tab-frame-height: 810px;
+      --tab-padding-x: 24px;
+      --tab-padding-top: 16px;
+      --tab-padding-bottom: 24px;
+      --tab-padding-inline: 48px;
+      --tab-padding-block: 40px;
+      min-width: calc(var(--tab-frame-width) + var(--tab-padding-inline));
+      min-height: calc(var(--tab-frame-height) + var(--tab-padding-block));
+      padding: var(--tab-padding-top) var(--tab-padding-x) var(--tab-padding-bottom);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -1349,6 +1389,7 @@
 
     <section class="tab-panel" id="mapTab">
       <div class="stage">
+      <div class="tab-scale-frame">
       <section class="canvas" aria-label="Thời kỳ quá độ lên CNXH được minh họa như một cây cầu lịch sử">
         <svg class="arrow-layer" viewBox="0 0 1600 950" aria-hidden="true" focusable="false">
           <defs>
@@ -1529,10 +1570,12 @@
         <div class="footer-note">"Quá độ là quá trình lâu dài, nhiều bước trung gian."</div>
       </section>
       </div>
+      </div>
     </section>
 
     <section class="tab-panel" id="visualTab" hidden>
       <div class="visual-stage">
+        <div class="tab-scale-frame">
         <section class="visual-canvas" aria-label="Sơ đồ trực quan giải thích vì sao quá độ là quá trình lâu dài, nhiều bước trung gian">
           <h1 class="visual-title">Vì sao quá độ là quá trình lâu dài, nhiều bước trung gian?</h1>
           <p class="visual-lead">
@@ -1605,11 +1648,13 @@
             Xuất phát thấp + cải tạo cái cũ + xây dựng cái mới + nhiều điều kiện = quá trình lâu dài, nhiều bước trung gian
           </div>
         </section>
+        </div>
       </div>
     </section>
 
     <section class="tab-panel" id="aiTab" hidden>
       <div class="ai-stage">
+        <div class="tab-scale-frame">
         <section class="ai-canvas" aria-label="Cam kết sử dụng AI trong quá trình làm concept map">
           <h1 class="ai-title">Cam kết dùng AI</h1>
           <p class="ai-lead">
@@ -1673,6 +1718,7 @@
             </div>
           </div>
         </section>
+        </div>
       </div>
     </section>
   </main>
